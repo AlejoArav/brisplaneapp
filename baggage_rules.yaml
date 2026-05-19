@@ -1,0 +1,230 @@
+# Conservative baggage model for SCL → LHR, focused on moving with heavy luggage.
+# True checked-bag prices are fare-family, route, status, booking-channel, and operating-carrier dependent.
+# Treat these as estimates unless the API source returns included baggage and ancillary prices.
+
+settings:
+  default_bags_per_person: 2
+  default_use_airline_max_weight: true
+  use_strictest_interline_limit: true
+  notes: >-
+    In airline-max mode, the dashboard sets each requested checked bag to the
+    maximum per-piece checked-bag weight allowed by the visible carrier/cabin rule.
+    For mixed-carrier itineraries it uses the strictest visible limit.
+
+rules:
+  default:
+    airline_name: Default airline policy
+    standard_checked_weight_kg: 23
+    max_checked_weight_kg: 32
+    standard_checked_linear_cm: 158
+    max_checked_bags_in_economy_estimate: 1
+    included_checked_bags_fallback: 1
+    overweight_fee_estimate_gbp: 90
+    extra_bag_fee_estimate_gbp: 140
+    notes: "Most economy fares include 0–1 checked bag at 23 kg; 23–32 kg usually requires overweight/special handling fees."
+
+  BA:
+    airline_name: British Airways
+    standard_checked_weight_kg: 23
+    max_checked_weight_kg: 32
+    standard_checked_linear_cm: 158
+    max_checked_linear_cm: "190 x 75 x 65"
+    max_checked_weight_by_cabin_kg:
+      economy: 32
+      premium_economy: 32
+      business: 32
+      first: 32
+    standard_checked_weight_by_cabin_kg:
+      economy: 23
+      premium_economy: 23
+      business: 32
+      first: 32
+    included_checked_bags_fallback_by_cabin:
+      economy: 1
+      premium_economy: 2
+      business: 2
+      first: 2
+    included_checked_bags_fallback: 1
+    overweight_fee_estimate_gbp: 65
+    extra_bag_fee_estimate_gbp: 150
+    source_url: "https://www.britishairways.com/content/information/baggage-essentials"
+    notes: "BA states no checked bag may weigh over 32 kg; bags 23–32 kg can trigger a heavy-bag charge."
+
+  IB:
+    airline_name: Iberia
+    standard_checked_weight_kg: 23
+    max_checked_weight_kg: 32
+    standard_checked_linear_cm: 158
+    max_checked_weight_by_cabin_kg:
+      economy: 32
+      premium_economy: 32
+      business: 32
+      first: 32
+    standard_checked_weight_by_cabin_kg:
+      economy: 23
+      premium_economy: 23
+      business: 32
+      first: 32
+    included_checked_bags_fallback_by_cabin:
+      economy: 1
+      premium_economy: 2
+      business: 2
+      first: 2
+    included_checked_bags_fallback: 1
+    overweight_fee_estimate_gbp: 120
+    extra_bag_fee_estimate_gbp: 153
+    source_url: "https://www.iberia.com/cl/luggage/allowance-in-hold/"
+    notes: "Iberia standard is 23 kg but allows up to 32 kg with excess fees and lets customers add 15, 23, or 32 kg bags on many routes."
+
+  LA:
+    airline_name: LATAM
+    standard_checked_weight_kg: 23
+    max_checked_weight_kg: 32
+    standard_checked_linear_cm: 158
+    max_checked_weight_by_cabin_kg:
+      economy: 32
+      premium_economy: 32
+      business: 32
+      first: 32
+    standard_checked_weight_by_cabin_kg:
+      economy: 23
+      premium_economy: 23
+      business: 32
+      first: 32
+    included_checked_bags_fallback_by_cabin:
+      economy: 1
+      premium_economy: 2
+      business: 2
+      first: 2
+    included_checked_bags_fallback: 1
+    overweight_fee_estimate_gbp: 100
+    extra_bag_fee_estimate_gbp: 140
+    source_url: "https://www.latamairlines.com/es/en/experience/prepare-your-trip/baggage/checked-baggage"
+    notes: "LATAM publishes 23 kg as standard checked-bag weight and up to 32 kg per bag with overweight baggage where available."
+
+  AF:
+    airline_name: Air France
+    standard_checked_weight_kg: 23
+    max_checked_weight_kg: 32
+    standard_checked_linear_cm: 158
+    max_checked_weight_by_cabin_kg:
+      economy: 32
+      premium_economy: 32
+      business: 32
+      first: 32
+    standard_checked_weight_by_cabin_kg:
+      economy: 23
+      premium_economy: 23
+      business: 32
+      first: 32
+    included_checked_bags_fallback_by_cabin:
+      economy: 1
+      premium_economy: 2
+      business: 2
+      first: 2
+    included_checked_bags_fallback: 1
+    overweight_fee_estimate_gbp: 100
+    extra_bag_fee_estimate_gbp: 150
+    source_url: "https://www.airfrance.com/information/bagages/bagages-supplementaires-plus-grands-plus-lourds"
+    notes: "Air France allows overweight bags up to 32 kg; additional baggage in Economy/Premium is usually priced as 23 kg unless overweight is paid at the airport."
+
+  KL:
+    airline_name: KLM
+    standard_checked_weight_kg: 23
+    max_checked_weight_kg: 32
+    standard_checked_linear_cm: 158
+    max_checked_weight_by_cabin_kg:
+      economy: 32
+      premium_economy: 32
+      business: 32
+      first: 32
+    standard_checked_weight_by_cabin_kg:
+      economy: 23
+      premium_economy: 23
+      business: 32
+      first: 32
+    included_checked_bags_fallback_by_cabin:
+      economy: 1
+      premium_economy: 2
+      business: 2
+      first: 2
+    included_checked_bags_fallback: 1
+    overweight_fee_estimate_gbp: 100
+    extra_bag_fee_estimate_gbp: 150
+    source_url: "https://www.klm.com/information/baggage/checked-baggage-allowance"
+    notes: "KLM Economy/Premium standard checked bags are 23 kg; Business allows 32 kg. Overweight rules can apply up to 32 kg."
+
+  AA:
+    airline_name: American Airlines
+    standard_checked_weight_kg: 23
+    max_checked_weight_kg: 32
+    standard_checked_linear_cm: 158
+    max_checked_weight_by_cabin_kg:
+      economy: 32
+      premium_economy: 32
+      business: 32
+      first: 32
+    standard_checked_weight_by_cabin_kg:
+      economy: 23
+      premium_economy: 23
+      business: 32
+      first: 32
+    included_checked_bags_fallback_by_cabin:
+      economy: 1
+      premium_economy: 2
+      business: 2
+      first: 2
+    included_checked_bags_fallback: 1
+    overweight_fee_estimate_gbp: 120
+    extra_bag_fee_estimate_gbp: 150
+    notes: "Conservative transatlantic estimate; verify exact fee/seasonality before booking."
+
+  AV:
+    airline_name: Avianca
+    standard_checked_weight_kg: 23
+    max_checked_weight_kg: 32
+    standard_checked_linear_cm: 158
+    max_checked_weight_by_cabin_kg:
+      economy: 32
+      premium_economy: 32
+      business: 32
+      first: 32
+    standard_checked_weight_by_cabin_kg:
+      economy: 23
+      premium_economy: 23
+      business: 32
+      first: 32
+    included_checked_bags_fallback_by_cabin:
+      economy: 1
+      premium_economy: 2
+      business: 2
+      first: 2
+    included_checked_bags_fallback: 1
+    overweight_fee_estimate_gbp: 120
+    extra_bag_fee_estimate_gbp: 150
+    notes: "Fallback only; verify route-specific baggage before booking."
+
+  AC:
+    airline_name: Air Canada
+    standard_checked_weight_kg: 23
+    max_checked_weight_kg: 32
+    standard_checked_linear_cm: 158
+    max_checked_weight_by_cabin_kg:
+      economy: 32
+      premium_economy: 32
+      business: 32
+      first: 32
+    standard_checked_weight_by_cabin_kg:
+      economy: 23
+      premium_economy: 23
+      business: 32
+      first: 32
+    included_checked_bags_fallback_by_cabin:
+      economy: 1
+      premium_economy: 2
+      business: 2
+      first: 2
+    included_checked_bags_fallback: 1
+    overweight_fee_estimate_gbp: 120
+    extra_bag_fee_estimate_gbp: 150
+    notes: "Fallback only; verify route-specific baggage before booking."

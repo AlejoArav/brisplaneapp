@@ -1,0 +1,49 @@
+app:
+  title: "SCL → LHR → Bristol fare dashboard"
+  refresh_interval_hours: 6
+  default_currency: GBP
+  default_adults: 2
+  default_checked_bags_per_person: 2
+  default_checked_bag_weight_kg: 32
+  default_use_airline_max_weight: true
+  default_carry_on_per_person: 1
+  default_personal_item_per_person: 1
+  origin_airport: SCL
+  destination_airport: LHR
+  onward_destination_station: Bristol Temple Meads
+  warning_total_checked_bag_weight_kg: 128
+
+search:
+  trip_type: one_way
+  cabin: ECONOMY
+  max_stops: 2
+  # Outbound-only default date window. The Streamlit sidebar lets you edit both dates.
+  departure_date_start: "2026-09-01"
+  departure_date_end: "2026-09-10"
+  # Backwards-compatible fallback when departure_date_end is not set.
+  date_window_days: 10
+  # Kept for compatibility with older configs, but ignored by the app/scheduler.
+  return_date: null
+
+rail:
+  lhr_station: Heathrow Terminals 2 & 3
+  bristol_station: Bristol Temple Meads
+  preferred_routes:
+    - name: Heathrow Express + GWR via Paddington
+      lhr_to_london: Heathrow Express
+      london_station: London Paddington
+      onward_operator: GWR
+      luggage_score: 5
+      notes: "Most luggage-friendly airport segment; fast but usually costs more unless booked as advance."
+    - name: Elizabeth line + GWR via Paddington
+      lhr_to_london: Elizabeth line
+      london_station: London Paddington
+      onward_operator: GWR
+      luggage_score: 3
+      notes: "Cheaper airport segment, but can be busy with four 32 kg bags total."
+    - name: Elizabeth line to Reading + GWR to Bristol
+      lhr_to_london: Elizabeth line / change at Hayes & Harlington or Paddington depending service
+      london_station: Reading
+      onward_operator: GWR
+      luggage_score: 3
+      notes: "Can avoid central London but usually requires more changes; use only if timings are excellent."

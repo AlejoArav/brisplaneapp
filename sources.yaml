@@ -1,0 +1,92 @@
+# Copy/edit as needed. Keep scraping sources enabled:false until you have checked
+# each site's terms/robots.txt and verified selectors. The dashboard uses APIs first.
+
+sources:
+  - name: Amadeus Flight Offers Search
+    type: api_amadeus_flight_offers
+    enabled: true
+    route:
+      origin: SCL
+      destination: LHR
+    credentials:
+      client_id_env: AMADEUS_CLIENT_ID
+      client_secret_env: AMADEUS_CLIENT_SECRET
+      host_env: AMADEUS_HOST
+    request:
+      currency: GBP
+      max_results: 50
+
+  - name: SerpApi Google Flights
+    type: api_serpapi_google_flights
+    enabled: false
+    route:
+      origin: SCL
+      destination: LHR
+    credentials:
+      api_key_env: SERPAPI_API_KEY
+    request:
+      currency: GBP
+      gl: uk
+      hl: en
+      max_results: 50
+
+  - name: Duffel Flight Offers
+    type: api_duffel_flight_offers
+    enabled: false
+    route:
+      origin: SCL
+      destination: LHR
+    credentials:
+      access_token_env: DUFFEL_ACCESS_TOKEN
+      version_env: DUFFEL_VERSION
+    request:
+      currency: GBP
+      private_fares: false
+
+  - name: National Rail Online Journey Planner
+    type: api_national_rail_ojp
+    enabled: false
+    route:
+      origin: Heathrow Airport
+      destination: Bristol Temple Meads
+    credentials:
+      user_env: NATIONAL_RAIL_OJP_USER
+      password_env: NATIONAL_RAIL_OJP_PASSWORD
+    request:
+      requires_formal_licence: true
+
+  - name: Heathrow Express public fares page
+    type: static_css
+    enabled: false
+    url: https://www.heathrow.com/transport-and-directions/by-rail-or-train/heathrow-express
+    respect_robots_txt: true
+    user_agent: scl-lhr-bristol-dashboard/0.1 personal-use
+    selectors:
+      fare_table: "table"
+      ticket_type: "td:nth-child(1)"
+      standard_price: "td:nth-child(2)"
+      business_price: "td:nth-child(3)"
+
+  - name: Trainline Heathrow to Bristol page
+    type: static_css
+    enabled: false
+    url: https://www.thetrainline.com/train-times/heathrow-terminal-2-to-bristol-temple-meads
+    respect_robots_txt: true
+    user_agent: scl-lhr-bristol-dashboard/0.1 personal-use
+    selectors:
+      card: ".ticket-card, .journey-results, [data-test*='journey']"
+      title: "h2, h3, .journey-title"
+      price: "[data-test*='price'], .price"
+      duration: "[data-test*='duration'], .duration"
+      changes: "[data-test*='changes'], .changes"
+
+  - name: GWR London Paddington to Bristol page
+    type: static_css
+    enabled: false
+    url: https://www.gwr.com/stations-and-destinations/popular-routes/london-to-bristol
+    respect_robots_txt: true
+    user_agent: scl-lhr-bristol-dashboard/0.1 personal-use
+    selectors:
+      fare_summary: "body"
+      price: ".price, [class*='price']"
+      duration: "[class*='duration']"

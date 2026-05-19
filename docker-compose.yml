@@ -1,0 +1,11 @@
+services:
+  travel-dashboard:
+    build: .
+    ports:
+      - "8501:8501"
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+      - ./sources.yaml:/app/sources.yaml:ro
+      - ./baggage_rules.yaml:/app/baggage_rules.yaml:ro
