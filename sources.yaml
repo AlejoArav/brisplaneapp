@@ -18,7 +18,7 @@ sources:
 
   - name: SerpApi Google Flights
     type: api_serpapi_google_flights
-    enabled: false
+    enabled: true
     route:
       origin: SCL
       destination: LHR
@@ -32,7 +32,7 @@ sources:
 
   - name: Duffel Flight Offers
     type: api_duffel_flight_offers
-    enabled: false
+    enabled: true
     route:
       origin: SCL
       destination: LHR
@@ -45,7 +45,7 @@ sources:
 
   - name: National Rail Online Journey Planner
     type: api_national_rail_ojp
-    enabled: false
+    enabled: true
     route:
       origin: Heathrow Airport
       destination: Bristol Temple Meads
@@ -57,7 +57,7 @@ sources:
 
   - name: Heathrow Express public fares page
     type: static_css
-    enabled: false
+    enabled: true
     url: https://www.heathrow.com/transport-and-directions/by-rail-or-train/heathrow-express
     respect_robots_txt: true
     user_agent: scl-lhr-bristol-dashboard/0.1 personal-use
@@ -69,7 +69,7 @@ sources:
 
   - name: Trainline Heathrow to Bristol page
     type: static_css
-    enabled: false
+    enabled: true
     url: https://www.thetrainline.com/train-times/heathrow-terminal-2-to-bristol-temple-meads
     respect_robots_txt: true
     user_agent: scl-lhr-bristol-dashboard/0.1 personal-use
@@ -82,7 +82,7 @@ sources:
 
   - name: GWR London Paddington to Bristol page
     type: static_css
-    enabled: false
+    enabled: true
     url: https://www.gwr.com/stations-and-destinations/popular-routes/london-to-bristol
     respect_robots_txt: true
     user_agent: scl-lhr-bristol-dashboard/0.1 personal-use
