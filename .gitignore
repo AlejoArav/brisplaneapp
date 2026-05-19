@@ -1,0 +1,21 @@
+# Secrets and local env
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Python cache/venvs
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Local app data
+data/
+*.sqlite
+*.sqlite3
+*.db
+
+# Optional local IDE settings
+.vscode/

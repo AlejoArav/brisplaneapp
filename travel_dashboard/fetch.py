@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import re
 from datetime import date, timedelta
 from typing import Any
+
+import requests
 
 from travel_dashboard.config import load_env, load_yaml
 from travel_dashboard.sources.amadeus import AmadeusClient
@@ -12,6 +15,36 @@ from travel_dashboard.sources.serpapi_google_flights import SerpApiGoogleFlights
 
 def enabled_sources(sources_config: dict[str, Any]) -> list[dict[str, Any]]:
     return [s for s in sources_config.get("sources", []) if s.get("enabled", False)]
+
+
+def _redact_sensitive(text: str) -> str:
+    redacted = re.sub(r"(?i)(api_key=)[^&\s]+", r"\1***", text)
+    redacted = re.sub(r"(?i)(authorization:\s*bearer\s+)[^\s]+", r"\1***", redacted)
+    return redacted
+
+
+def _format_source_error(exc: Exception) -> str:
+    if isinstance(exc, requests.HTTPError) and exc.response is not None:
+        response = exc.response
+        status = response.status_code
+        reason = response.reason or "HTTP error"
+        detail = ""
+        try:
+            payload = response.json()
+            if isinstance(payload, dict):
+                if isinstance(payload.get("errors"), list) and payload["errors"]:
+                    first = payload["errors"][0]
+                    if isinstance(first, dict):
+                        detail = (
+                            str(first.get("detail") or first.get("message") or first.get("title") or "").strip()
+                        )
+                detail = detail or str(payload.get("error_description") or payload.get("error") or payload.get("message") or "").strip()
+        except ValueError:
+            detail = ""
+        if detail:
+            return f"HTTP {status} {reason}: {_redact_sensitive(detail)}"
+        return f"HTTP {status} {reason}"
+    return _redact_sensitive(str(exc))
 
 
 def search_flights(
@@ -61,7 +94,7 @@ def search_flights(
             offers.extend([o.to_dict() for o in source_offers])
             messages.append(f"{source.get('name')}: {len(source_offers)} offers.")
         except Exception as exc:
-            messages.append(f"{source.get('name')} failed: {exc}")
+            messages.append(f"{source.get('name')} failed: {_format_source_error(exc)}")
     return offers, messages
 
 

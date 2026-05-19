@@ -50,6 +50,9 @@ class SerpApiGoogleFlightsClient:
             "departure_id": route.get("origin", "SCL"),
             "arrival_id": route.get("destination", "LHR"),
             "outbound_date": departure_date,
+            # SerpApi defaults to round-trip (type=1), which requires return_date.
+            # Force one-way by default to match this dashboard's outbound-only design.
+            "type": 2,
             "currency": req.get("currency", "GBP"),
             "gl": req.get("gl", "uk"),
             "hl": req.get("hl", "en"),
@@ -59,6 +62,7 @@ class SerpApiGoogleFlightsClient:
             "bags": adults,
         }
         if return_date:
+            params["type"] = 1
             params["return_date"] = return_date
         r = requests.get("https://serpapi.com/search.json", params=params, timeout=45)
         r.raise_for_status()
