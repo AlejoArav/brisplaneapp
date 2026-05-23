@@ -1,5 +1,5 @@
-# Copy/edit as needed. Keep scraping sources enabled:false until you have checked
-# each site's terms/robots.txt and verified selectors. The dashboard uses APIs first.
+# Copy/edit as needed. For static scraping sources, enable only after checking each
+# site's terms/robots.txt and verifying selectors. The dashboard uses APIs first.
 
 sources:
   - name: Amadeus Flight Offers Search
@@ -43,9 +43,26 @@ sources:
       currency: GBP
       private_fares: false
 
+  - name: TransportAPI UK Public Journey (Rail/Transit)
+    type: api_transportapi_public_journey
+    enabled: true
+    route:
+      origin: Heathrow Airport
+      destination: Bristol Temple Meads
+    credentials:
+      app_id_env: TRANSPORTAPI_APP_ID
+      app_key_env: TRANSPORTAPI_APP_KEY
+    request:
+      # Default endpoint used by the client if omitted:
+      # https://transportapi.com/v3/uk/public/journey/from/{origin}/to/{destination}.json
+      time_mode: at
+      departure_time: "09:00"
+      max_results: 5
+      region: gb
+
   - name: National Rail Online Journey Planner
     type: api_national_rail_ojp
-    enabled: true
+    enabled: false
     route:
       origin: Heathrow Airport
       destination: Bristol Temple Meads

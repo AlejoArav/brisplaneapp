@@ -28,13 +28,18 @@ Airline and rail fare pages often have restrictive terms, dynamic JavaScript, bo
 
 ### Rail
 
-The rail module currently uses conservative public-fare benchmarks:
+The rail module now supports live sources from `sources.yaml`, including:
+
+- `api_transportapi_*` journey sources (for example `api_transportapi_public_journey`) using `TRANSPORTAPI_APP_ID` and `TRANSPORTAPI_APP_KEY`.
+- `static_css` selector-based page scraping entries (best-effort, terms/robots dependent).
+
+If no live rail rows can be parsed, the app falls back to conservative planning benchmarks:
 
 - Heathrow Express + GWR via Paddington
 - Elizabeth line + GWR via Paddington
 - Through-ticket Heathrow T2/T3 → Bristol Temple Meads benchmark
 
-For live UK rail fares, use a licensed National Rail OJP feed or a retailer/partner API. National Rail OJP is listed in `sources.yaml` but disabled because it requires a formal licence.
+National Rail OJP remains listed in `sources.yaml`, but requires a formal licence.
 
 ## Setup
 
@@ -66,6 +71,13 @@ For Amadeus test mode, create a free developer app and add:
 AMADEUS_CLIENT_ID=...
 AMADEUS_CLIENT_SECRET=...
 AMADEUS_HOST=https://test.api.amadeus.com
+```
+
+For TransportAPI rail journey sources, add:
+
+```dotenv
+TRANSPORTAPI_APP_ID=...
+TRANSPORTAPI_APP_KEY=...
 ```
 
 ## Run the dashboard

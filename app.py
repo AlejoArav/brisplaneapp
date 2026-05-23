@@ -351,7 +351,7 @@ st.markdown(
     """
 - `sources.yaml` follows the same idea as the housing app: API/scraping sources are separate from dashboard logic.
 - Refresh cadence is controlled by `REFRESH_INTERVAL_HOURS` and defaults to 6 hours.
-- Direct scraping entries are intentionally disabled until their terms, robots.txt and selectors are verified.
+- Rail supports TransportAPI journey sources and `static_css` selectors as live best-effort inputs.
 - Flight searches are **one-way only**: SCL → LHR. The app does not send a return date to flight providers.
 - The default departure window is **2026-09-01 to 2026-09-10**, editable from the sidebar with a start/end date selector.
 - Baggage is evaluated dynamically: **2 checked bags per person × 2 people**, with each bag set to the **maximum checked-bag weight allowed by the visible airline/cabin rule** when airline-max mode is enabled.

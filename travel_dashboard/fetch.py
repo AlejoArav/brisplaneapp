@@ -9,12 +9,22 @@ import requests
 from travel_dashboard.config import load_env, load_yaml
 from travel_dashboard.sources.amadeus import AmadeusClient
 from travel_dashboard.sources.duffel import DuffelClient
-from travel_dashboard.sources.rail import static_rail_estimates
+from travel_dashboard.sources.rail import live_rail_offers, static_rail_estimates
 from travel_dashboard.sources.serpapi_google_flights import SerpApiGoogleFlightsClient
+
+FLIGHT_SOURCE_TYPES = {
+    "api_amadeus_flight_offers",
+    "api_serpapi_google_flights",
+    "api_duffel_flight_offers",
+}
 
 
 def enabled_sources(sources_config: dict[str, Any]) -> list[dict[str, Any]]:
     return [s for s in sources_config.get("sources", []) if s.get("enabled", False)]
+
+
+def enabled_flight_sources(sources_config: dict[str, Any]) -> list[dict[str, Any]]:
+    return [s for s in enabled_sources(sources_config) if s.get("type") in FLIGHT_SOURCE_TYPES]
 
 
 def _redact_sensitive(text: str) -> str:
@@ -66,7 +76,7 @@ def search_flights(
     baggage_rules = load_yaml("baggage_rules.yaml")
     offers = []
     messages = []
-    for source in enabled_sources(sources_config):
+    for source in enabled_flight_sources(sources_config):
         typ = source.get("type")
         client = None
         if typ == "api_amadeus_flight_offers":
@@ -75,9 +85,6 @@ def search_flights(
             client = SerpApiGoogleFlightsClient(source, baggage_rules)
         elif typ == "api_duffel_flight_offers":
             client = DuffelClient(source, baggage_rules)
-        else:
-            messages.append(f"Skipped {source.get('name')}: unsupported or disabled source type {typ!r}.")
-            continue
         if not client.enabled_and_configured():
             messages.append(f"Skipped {source.get('name')}: enabled but missing credentials.")
             continue
@@ -127,5 +134,15 @@ def search_flights_window(
 
 
 def search_rail(config: dict[str, Any]) -> tuple[list[dict], list[str]]:
-    rows = [r.to_dict() for r in static_rail_estimates(config)]
-    return rows, ["Rail: using static planning estimates. Connect National Rail OJP/licensed retailer API for live fares."]
+    load_env()
+    sources_config = load_yaml("sources.yaml")
+    rows, messages = live_rail_offers(config, enabled_sources(sources_config))
+    if rows:
+        return [r.to_dict() for r in rows], messages
+    fallback_rows = [r.to_dict() for r in static_rail_estimates(config)]
+    fallback_message = "Rail: using static planning estimates. Connect TransportAPI or National Rail licensed feeds for live fares."
+    if not messages:
+        messages = [fallback_message]
+    else:
+        messages.append(fallback_message)
+    return fallback_rows, messages
