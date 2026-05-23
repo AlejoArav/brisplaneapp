@@ -4,12 +4,11 @@
 
 settings:
   default_bags_per_person: 2
-  default_use_airline_max_weight: true
+  default_use_airline_max_weight: false
   use_strictest_interline_limit: true
   notes: >-
-    In airline-max mode, the dashboard sets each requested checked bag to the
-    maximum per-piece checked-bag weight allowed by the visible carrier/cabin rule.
-    For mixed-carrier itineraries it uses the strictest visible limit.
+    Default planning mode uses 23 kg per checked bag with 2 checked bags per person.
+    Airline-max mode is available but disabled by default.
 
 rules:
   default:

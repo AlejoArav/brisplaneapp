@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import os
 from datetime import date, timedelta
+from urllib.parse import quote_plus
 
 import pandas as pd
 import plotly.express as px
@@ -128,6 +130,152 @@ def _inclusive_window_days(start: date, end: date) -> int:
     return max(1, (end - start).days + 1)
 
 
+def _currency_code(app_cfg: dict) -> str:
+    return str(app_cfg.get("default_currency", "GBP")).upper()
+
+
+def _gbp_to_target_rate(app_cfg: dict, target_currency: str) -> float:
+    currency = target_currency.upper()
+    if currency == "GBP":
+        return 1.0
+    env_key = f"GBP_TO_{currency}_RATE"
+    env_value = os.getenv(env_key)
+    if env_value:
+        try:
+            rate = float(env_value)
+            if rate > 0:
+                return rate
+        except ValueError:
+            pass
+    cfg_key = f"gbp_to_{currency.lower()}_rate"
+    try:
+        cfg_value = float(app_cfg.get(cfg_key, 0.0))
+        if cfg_value > 0:
+            return cfg_value
+    except (TypeError, ValueError):
+        pass
+    if currency == "CLP":
+        return 1210.0
+    return 1.0
+
+
+def _convert_amount(
+    value: float | int | None,
+    from_currency: str | None,
+    target_currency: str,
+    gbp_to_target_rate: float,
+) -> float | None:
+    if value is None or pd.isna(value):
+        return None
+    amount = float(value)
+    from_code = str(from_currency or "GBP").upper()
+    target_code = target_currency.upper()
+    if from_code == target_code:
+        return amount
+    if from_code == "GBP":
+        return amount * gbp_to_target_rate
+    if from_code == "CLP" and target_code == "GBP" and gbp_to_target_rate > 0:
+        return amount / gbp_to_target_rate
+    return amount
+
+
+def _money_prefix(currency: str) -> str:
+    code = currency.upper()
+    if code == "CLP":
+        return "CLP$"
+    if code == "GBP":
+        return "£"
+    return f"{code} "
+
+
+def _format_money(value: float | int | None, currency: str) -> str:
+    if value is None or pd.isna(value):
+        return "—"
+    return f"{_money_prefix(currency)}{float(value):,.0f}"
+
+
+def _departure_date_from_text(value: str | None) -> str:
+    text = str(value or "").strip()
+    if len(text) >= 10 and text[4] == "-" and text[7] == "-":
+        return text[:10]
+    return date.today().isoformat()
+
+
+def _route_endpoints(route_text: str | None) -> tuple[str, str]:
+    parts = [p.strip() for p in str(route_text or "").split("→") if p.strip()]
+    if len(parts) >= 2:
+        return parts[0], parts[-1]
+    return "SCL", "LHR"
+
+
+def _default_search_link(route_text: str | None, depart_at: str | None, adults: int, cabin: str, currency: str) -> str:
+    origin, destination = _route_endpoints(route_text)
+    dep_date = _departure_date_from_text(depart_at)
+    cabin_text = str(cabin or "ECONOMY").replace("_", " ").lower()
+    query = f"Flights from {origin} to {destination} on {dep_date} for {adults} adults {cabin_text}"
+    return f"https://www.google.com/travel/flights?q={quote_plus(query)}&curr={currency.upper()}"
+
+
+def _add_display_columns(
+    flights_df: pd.DataFrame,
+    rail_df: pd.DataFrame,
+    app_cfg: dict,
+    adults: int,
+    cabin: str,
+) -> tuple[pd.DataFrame, pd.DataFrame, str, float]:
+    target_currency = _currency_code(app_cfg)
+    gbp_to_target_rate = _gbp_to_target_rate(app_cfg, target_currency)
+    flights = flights_df.copy()
+    rail = rail_df.copy()
+
+    if not flights.empty:
+        if "currency" not in flights.columns:
+            flights["currency"] = "GBP"
+        flights["currency"] = flights["currency"].astype(str).str.upper()
+        flights["price_display"] = flights.apply(
+            lambda row: _convert_amount(row.get("price_gbp"), row.get("currency"), target_currency, gbp_to_target_rate),
+            axis=1,
+        )
+        if "estimated_baggage_extra_gbp" not in flights.columns:
+            flights["estimated_baggage_extra_gbp"] = 0.0
+        flights["estimated_baggage_extra_display"] = flights["estimated_baggage_extra_gbp"].apply(
+            lambda v: _convert_amount(v, "GBP", target_currency, gbp_to_target_rate)
+        )
+
+        def _row_total(row: pd.Series) -> float:
+            feasible = row.get("baggage_feasible", True)
+            if pd.isna(feasible):
+                feasible = True
+            if not feasible:
+                return float("inf")
+            price_val = row.get("price_display")
+            bag_val = row.get("estimated_baggage_extra_display")
+            if pd.isna(price_val) or pd.isna(bag_val):
+                return float("inf")
+            return float(price_val) + float(bag_val)
+
+        flights["estimated_total_display"] = flights.apply(_row_total, axis=1)
+        flights["search_link"] = flights.apply(
+            lambda row: row.get("deep_link")
+            if str(row.get("deep_link", "")).startswith("http")
+            else _default_search_link(
+                row.get("route"),
+                row.get("depart_at"),
+                adults=adults,
+                cabin=cabin,
+                currency=target_currency,
+            ),
+            axis=1,
+        )
+
+    if not rail.empty:
+        rail["price_display"] = rail.get("price_gbp", pd.Series(dtype=float)).apply(
+            lambda v: _convert_amount(v, "GBP", target_currency, gbp_to_target_rate)
+        )
+
+    return flights, rail, target_currency, gbp_to_target_rate
+
+
 app_cfg = CONFIG.get("app", {})
 search_cfg = CONFIG.get("search", {})
 bag_settings = BAGGAGE_RULES.get("settings", {})
@@ -175,7 +323,7 @@ with st.sidebar:
     use_airline_max_weight = st.toggle(
         "Use each airline's maximum checked-bag weight",
         value=bool(app_cfg.get("default_use_airline_max_weight", bag_settings.get("default_use_airline_max_weight", True))),
-        help="Recommended for this move. The dashboard will use the strictest visible airline/cabin maximum for each itinerary.",
+        help="If enabled, the dashboard uses the strictest visible airline/cabin maximum for each itinerary.",
     )
     fixed_bag_weight = None
     if not use_airline_max_weight:
@@ -183,7 +331,7 @@ with st.sidebar:
             "Fixed weight per checked bag (kg)",
             min_value=0.0,
             max_value=40.0,
-            value=float(app_cfg.get("default_checked_bag_weight_kg", 32)),
+            value=float(app_cfg.get("default_checked_bag_weight_kg", 23)),
             step=1.0,
         )
     else:
@@ -207,11 +355,23 @@ else:
     messages = ["Loaded local cache. Press Search / refresh now to query enabled providers."]
 
 flights_df, rail_df = normalise_df(flights_df, rail_df)
+flights_df, rail_df, display_currency, gbp_to_display_rate = _add_display_columns(
+    flights_df,
+    rail_df,
+    app_cfg=app_cfg,
+    adults=int(adults),
+    cabin=str(cabin),
+)
 
 st.subheader("Status")
 with st.expander("Source messages", expanded=False):
     for msg in messages:
         st.write("•", msg)
+if display_currency != "GBP":
+    st.caption(
+        f"Display currency: {display_currency}. Any GBP-denominated estimates (baggage model and rail fallback) "
+        f"are converted using 1 GBP = {gbp_to_display_rate:,.2f} {display_currency}."
+    )
 
 # KPI cards
 c1, c2, c3, c4, c5 = st.columns(5)
@@ -219,12 +379,12 @@ if not flights_df.empty:
     feasible_flights = flights_df.copy()
     if "baggage_feasible" in feasible_flights.columns:
         feasible_flights = feasible_flights[feasible_flights["baggage_feasible"]]
-    feasible_flights = feasible_flights.replace([float("inf"), -float("inf")], pd.NA).dropna(subset=["estimated_total_gbp"])
+    feasible_flights = feasible_flights.replace([float("inf"), -float("inf")], pd.NA).dropna(subset=["estimated_total_display"])
     if not feasible_flights.empty:
-        best_flight = feasible_flights.sort_values("estimated_total_gbp", na_position="last").iloc[0]
-        c1.metric("Best flight incl. baggage est.", f"£{best_flight['estimated_total_gbp']:.0f}")
-        c2.metric("Base flight price", f"£{best_flight['price_gbp']:.0f}")
-        c3.metric("Baggage estimate", f"£{best_flight.get('estimated_baggage_extra_gbp', 0):.0f}")
+        best_flight = feasible_flights.sort_values("estimated_total_display", na_position="last").iloc[0]
+        c1.metric("Best flight incl. baggage est.", _format_money(best_flight["estimated_total_display"], display_currency))
+        c2.metric("Base flight price", _format_money(best_flight["price_display"], display_currency))
+        c3.metric("Baggage estimate", _format_money(best_flight.get("estimated_baggage_extra_display", 0), display_currency))
         c4.metric("Checked bags total", f"{int(best_flight.get('requested_checked_bags_total', adults * checked_bags))}")
         c5.metric("Per-bag target", f"{best_flight.get('requested_checked_weight_kg', 0):.0f} kg")
     else:
@@ -269,14 +429,35 @@ with left:
             "included_checked_weight_kg",
             "extra_bags_total",
             "overweight_bags_total",
-            "price_gbp",
-            "estimated_baggage_extra_gbp",
-            "estimated_total_gbp",
+            "currency",
+            "price_display",
+            "estimated_baggage_extra_display",
+            "estimated_total_display",
+            "search_link",
             "fetched_at",
         ]
         existing_cols = [c for c in view_cols if c in flights_df.columns]
-        table_df = flights_df[existing_cols].sort_values("estimated_total_gbp", na_position="last")
-        st.dataframe(table_df, use_container_width=True, hide_index=True)
+        table_df = flights_df[existing_cols].sort_values("estimated_total_display", na_position="last")
+        st.dataframe(
+            table_df,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "price_display": st.column_config.NumberColumn(
+                    f"Base fare ({display_currency})",
+                    format=f"{_money_prefix(display_currency)} %d",
+                ),
+                "estimated_baggage_extra_display": st.column_config.NumberColumn(
+                    f"Baggage estimate ({display_currency})",
+                    format=f"{_money_prefix(display_currency)} %d",
+                ),
+                "estimated_total_display": st.column_config.NumberColumn(
+                    f"Estimated total ({display_currency})",
+                    format=f"{_money_prefix(display_currency)} %d",
+                ),
+                "search_link": st.column_config.LinkColumn("Search flight page"),
+            },
+        )
 
         with st.expander("Baggage calculation notes per offer", expanded=False):
             note_cols = [c for c in ["airline", "route", "baggage_note"] if c in flights_df.columns]
@@ -286,16 +467,16 @@ with left:
         chart_df = flights_df.copy()
         if "baggage_feasible" in chart_df.columns:
             chart_df = chart_df[chart_df["baggage_feasible"]]
-        chart_df = chart_df.replace([float("inf"), -float("inf")], pd.NA).dropna(subset=["estimated_total_gbp"])
+        chart_df = chart_df.replace([float("inf"), -float("inf")], pd.NA).dropna(subset=["estimated_total_display"])
         if not chart_df.empty:
             fig = px.scatter(
                 chart_df,
                 x="depart_at",
-                y="estimated_total_gbp",
+                y="estimated_total_display",
                 color="airline",
-                size="estimated_baggage_extra_gbp",
-                hover_data=["source", "route", "stops", "price_gbp", "requested_checked_weight_kg"],
-                title="Estimated total flight price by departure, with airline-max baggage",
+                size="estimated_baggage_extra_display",
+                hover_data=["source", "route", "stops", "price_display", "requested_checked_weight_kg"],
+                title=f"Estimated total flight price by departure ({display_currency})",
             )
             st.plotly_chart(fig, use_container_width=True)
 
@@ -305,9 +486,15 @@ with right:
         st.info("No rail estimates available.")
     else:
         st.dataframe(
-            rail_df[["route_name", "price_gbp", "duration", "changes", "luggage_score", "notes"]],
+            rail_df[["route_name", "price_display", "duration", "changes", "luggage_score", "notes"]],
             use_container_width=True,
             hide_index=True,
+            column_config={
+                "price_display": st.column_config.NumberColumn(
+                    f"Price ({display_currency})",
+                    format=f"{_money_prefix(display_currency)} %d",
+                )
+            },
         )
         st.warning(
             "With four very heavy checked bags, the rail segment is mainly a handling problem, not a fare problem. "
@@ -321,11 +508,11 @@ if not flights_df.empty and not rail_df.empty:
     f = flights_df.copy()
     if "baggage_feasible" in f.columns:
         f = f[f["baggage_feasible"]]
-    f = f.replace([float("inf"), -float("inf")], pd.NA).dropna(subset=["estimated_total_gbp"])
-    r = rail_df.dropna(subset=["price_gbp"]).copy()
+    f = f.replace([float("inf"), -float("inf")], pd.NA).dropna(subset=["estimated_total_display"])
+    r = rail_df.dropna(subset=["price_display"]).copy()
     if not f.empty and not r.empty:
-        best_rail_price = float(r["price_gbp"].min())
-        f["flight_plus_min_rail_gbp"] = f["estimated_total_gbp"] + best_rail_price * adults
+        best_rail_price = float(r["price_display"].min())
+        f["flight_plus_min_rail_display"] = f["estimated_total_display"] + best_rail_price * adults
         cols = [
             "airline",
             "depart_at",
@@ -333,13 +520,25 @@ if not flights_df.empty and not rail_df.empty:
             "stops",
             "requested_checked_bags_total",
             "requested_checked_weight_kg",
-            "estimated_total_gbp",
-            "flight_plus_min_rail_gbp",
+            "estimated_total_display",
+            "flight_plus_min_rail_display",
+            "search_link",
         ]
         st.dataframe(
-            f[cols].sort_values("flight_plus_min_rail_gbp", na_position="last").head(20),
+            f[cols].sort_values("flight_plus_min_rail_display", na_position="last").head(20),
             use_container_width=True,
             hide_index=True,
+            column_config={
+                "estimated_total_display": st.column_config.NumberColumn(
+                    f"Flight total ({display_currency})",
+                    format=f"{_money_prefix(display_currency)} %d",
+                ),
+                "flight_plus_min_rail_display": st.column_config.NumberColumn(
+                    f"Flight + min rail ({display_currency})",
+                    format=f"{_money_prefix(display_currency)} %d",
+                ),
+                "search_link": st.column_config.LinkColumn("Search flight page"),
+            },
         )
     else:
         st.info("No feasible flight rows to combine with rail yet.")
@@ -354,7 +553,7 @@ st.markdown(
 - Rail supports TransportAPI journey sources and `static_css` selectors as live best-effort inputs.
 - Flight searches are **one-way only**: SCL → LHR. The app does not send a return date to flight providers.
 - The default departure window is **2026-09-01 to 2026-09-10**, editable from the sidebar with a start/end date selector.
-- Baggage is evaluated dynamically: **2 checked bags per person × 2 people**, with each bag set to the **maximum checked-bag weight allowed by the visible airline/cabin rule** when airline-max mode is enabled.
+- Default baggage planning is **2 checked bags per person × 2 people** at **23 kg per checked bag**.
 - For mixed-carrier itineraries, the app uses the strictest visible baggage limit across the itinerary, then estimates extra-bag and overweight fees unless the provider returns exact ancillary prices.
     """
 )

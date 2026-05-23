@@ -1,17 +1,18 @@
 app:
   title: "SCL → LHR → Bristol fare dashboard"
   refresh_interval_hours: 6
-  default_currency: GBP
+  default_currency: CLP
   default_adults: 2
   default_checked_bags_per_person: 2
-  default_checked_bag_weight_kg: 32
-  default_use_airline_max_weight: true
+  default_checked_bag_weight_kg: 23
+  default_use_airline_max_weight: false
   default_carry_on_per_person: 1
   default_personal_item_per_person: 1
   origin_airport: SCL
   destination_airport: LHR
   onward_destination_station: Bristol Temple Meads
-  warning_total_checked_bag_weight_kg: 128
+  warning_total_checked_bag_weight_kg: 92
+  gbp_to_clp_rate: 1210
 
 search:
   trip_type: one_way

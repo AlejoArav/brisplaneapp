@@ -13,7 +13,7 @@ sources:
       client_secret_env: AMADEUS_CLIENT_SECRET
       host_env: AMADEUS_HOST
     request:
-      currency: GBP
+      currency: CLP
       max_results: 50
 
   - name: SerpApi Google Flights
@@ -25,7 +25,7 @@ sources:
     credentials:
       api_key_env: SERPAPI_API_KEY
     request:
-      currency: GBP
+      currency: CLP
       gl: uk
       hl: en
       max_results: 50
@@ -40,7 +40,7 @@ sources:
       access_token_env: DUFFEL_ACCESS_TOKEN
       version_env: DUFFEL_VERSION
     request:
-      currency: GBP
+      currency: CLP
       private_fares: false
 
   - name: TransportAPI UK Public Journey (Rail/Transit)
